@@ -1,0 +1,26 @@
+# Private — kept local, not part of the public repo
+TIME-LOG.md
+
+# Secrets
+.env
+.env.*
+*.tfvars
+!*.tfvars.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# OS
+.DS_Store
