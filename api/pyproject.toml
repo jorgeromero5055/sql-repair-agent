@@ -5,4 +5,7 @@ requires-python = ">=3.13"
 dependencies = ["fastapi", "uvicorn[standard]"]
 
 [dependency-groups]
-dev = ["pytest", "httpx"]
+dev = ["pytest", "httpx2"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
