@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function Queue() {
   const [status, setStatus] = useState<string>("loading...");
 
   useEffect(() => {
-    fetch("https://it98wjwby0.execute-api.us-east-1.amazonaws.com/health")
+    fetch(`${API_URL}/health`)
       .then((r) => r.json())
       .then((d) => setStatus(JSON.stringify(d)))
       .catch((e) => setStatus("failed: " + e.message));

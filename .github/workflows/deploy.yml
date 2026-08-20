@@ -15,12 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Show OIDC claims
-        run: |
-          TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
-          python3 -c "import sys,base64,json;p=sys.argv[1].split('.')[1];p+='='*(-len(p)%4);d=json.loads(base64.urlsafe_b64decode(p));print('SUB:',d['sub']);print('AUD:',d['aud']);print('ISS:',d['iss'])" "$TOKEN"
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::020528754559:role/sql-repair-api-github-deploy
@@ -41,3 +35,26 @@ jobs:
           aws lambda update-function-code \
             --function-name sql-repair-api \
             --image-uri 020528754559.dkr.ecr.us-east-1.amazonaws.com/sql-repair-api:latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        working-directory: web
+        run: |
+          API_URL=$(aws apigatewayv2 get-apis --query "Items[?Name=='sql-repair-api'].ApiEndpoint" --output text)
+          echo "Building against $API_URL"
+          npm ci
+          VITE_API_URL="$API_URL" npm run build
+
+      - name: Upload to S3
+        working-directory: web
+        run: aws s3 sync dist/ s3://sql-repair-agent-web-020528754559 --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          DIST_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Origins.Items[0].DomainName=='sql-repair-agent-web-020528754559.s3.us-east-1.amazonaws.com'].Id" \
+            --output text)
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
