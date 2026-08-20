@@ -110,7 +110,7 @@ resource "aws_iam_role" "github_deploy" {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:jorgeromero5055/sql-repair-agent:*"
+          "token.actions.githubusercontent.com:sub" = "repo:jorgeromero5055@79546858/sql-repair-agent@1334210503:*"
         }
       }
     }]
