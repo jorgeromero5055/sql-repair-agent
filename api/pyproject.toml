@@ -2,7 +2,14 @@
 name = "sql-repair-agent-api"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = ["fastapi", "uvicorn[standard]"]
+dependencies = [
+    "alembic>=1.19.1",
+    "fastapi",
+    "psycopg[binary]>=3.3.4",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]",
+]
 
 [dependency-groups]
 dev = ["pytest", "httpx2"]

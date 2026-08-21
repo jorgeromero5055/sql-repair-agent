@@ -1,3 +1,10 @@
+variable "database_url" {
+  type      = string
+  sensitive = true
+}
+
+
+
 terraform {
   required_providers {
     aws = {
@@ -49,6 +56,12 @@ resource "aws_lambda_function" "api" {
   image_uri     = "${aws_ecr_repository.api.repository_url}:latest"
   timeout       = 30
   memory_size   = 512
+
+  environment {
+    variables = {
+      DATABASE_URL = var.database_url
+    }
+  }
 }
 
 resource "aws_apigatewayv2_api" "api" {
