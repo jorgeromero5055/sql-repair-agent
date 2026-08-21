@@ -30,6 +30,16 @@ jobs:
             -t 020528754559.dkr.ecr.us-east-1.amazonaws.com/sql-repair-api:latest .
           docker push 020528754559.dkr.ecr.us-east-1.amazonaws.com/sql-repair-api:latest
 
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Run database migrations
+        working-directory: api
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          uv sync --frozen
+          uv run alembic upgrade head
+
       - name: Update Lambda
         run: |
           aws lambda update-function-code \
