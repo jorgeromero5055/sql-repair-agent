@@ -3,8 +3,6 @@ variable "database_url" {
   sensitive = true
 }
 
-
-
 terraform {
   required_providers {
     aws = {
