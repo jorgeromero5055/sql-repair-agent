@@ -46,6 +46,12 @@ jobs:
             --function-name sql-repair-api \
             --image-uri 020528754559.dkr.ecr.us-east-1.amazonaws.com/sql-repair-api:latest
 
+      - name: Update worker
+        run: |
+          aws lambda update-function-code \
+            --function-name sql-repair-worker \
+            --image-uri 020528754559.dkr.ecr.us-east-1.amazonaws.com/sql-repair-api:latest
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
