@@ -58,6 +58,7 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       DATABASE_URL = var.database_url
+       QUEUE_URL    = aws_sqs_queue.repairs.url
     }
   }
 }
@@ -155,7 +156,10 @@ resource "aws_iam_role_policy" "github_deploy" {
       {
         Effect   = "Allow"
         Action   = "lambda:UpdateFunctionCode"
-        Resource = aws_lambda_function.api.arn
+        Resource = [
+          aws_lambda_function.api.arn,
+          aws_lambda_function.worker.arn,
+        ]
       },
             {
         Effect = "Allow"
@@ -259,4 +263,83 @@ resource "aws_s3_bucket_policy" "web" {
 
 output "web_url" {
   value = "https://${aws_cloudfront_distribution.web.domain_name}"
+}
+
+
+resource "aws_sqs_queue" "repairs_dlq" {
+  name                      = "sql-repair-repairs-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue" "repairs" {
+  name                       = "sql-repair-repairs"
+  visibility_timeout_seconds = 180
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.repairs_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+output "queue_url" {
+  value = aws_sqs_queue.repairs.url
+}
+
+resource "aws_iam_role" "worker" {
+  name = "sql-repair-worker"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "worker_logs" {
+  role       = aws_iam_role.worker.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "worker_sqs" {
+  role       = aws_iam_role.worker.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+}
+
+resource "aws_lambda_function" "worker" {
+  function_name = "sql-repair-worker"
+  role          = aws_iam_role.worker.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.api.repository_url}:latest"
+  timeout       = 120
+  memory_size   = 512
+
+  environment {
+    variables = {
+      DATABASE_URL = var.database_url
+      QUEUE_URL    = aws_sqs_queue.repairs.url
+    }
+  }
+}
+
+resource "aws_lambda_event_source_mapping" "worker" {
+  event_source_arn = aws_sqs_queue.repairs.arn
+  function_name    = aws_lambda_function.worker.arn
+  batch_size       = 1
+}
+
+resource "aws_iam_role_policy" "api_sqs" {
+  name = "send-to-queue"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.repairs.arn
+    }]
+  })
 }
