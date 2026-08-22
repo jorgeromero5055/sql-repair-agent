@@ -1,11 +1,20 @@
+
+
+
+
+
 import json
+import time
 import uuid
 
-from app.db.models import Repair, RepairStatus
+from app.db.models import Repair, RepairStatus, Trace
 from app.db.session import SessionLocal
 
+MAX_ATTEMPTS = 3
 
-def process(repair_id: uuid.UUID) -> None:
+
+def process(repair_id: uuid.UUID, attempt: int = 1) -> None:
+    started = time.monotonic()
     session = SessionLocal()
     try:
         repair = session.get(Repair, repair_id)
@@ -13,20 +22,36 @@ def process(repair_id: uuid.UUID) -> None:
             print(f"repair {repair_id} not found, dropping message")
             return
 
-        repair.status = RepairStatus.running
-        session.commit()
+        try:
+            repair.status = RepairStatus.running
+            session.commit()
 
-        repair.fixed_query = "-- canned result, the agent arrives in v2\nselect 1"
-        repair.status = RepairStatus.needs_review
-        session.commit()
+            repair.fixed_query = "-- canned result, the agent arrives in v2\nselect 1"
+            repair.status = RepairStatus.needs_review
+            session.commit()
 
-        print(f"repair {repair_id} -> needs_review")
+            print(f"repair {repair_id} -> needs_review (attempt {attempt})")
+
+        except Exception:
+            session.rollback()
+            if attempt >= MAX_ATTEMPTS:
+                repair.status = RepairStatus.failed
+                session.commit()
+                print(f"repair {repair_id} -> failed after {attempt} attempts")
+            raise
+
     finally:
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        session.add(
+            Trace(repair_id=repair_id, attempts=attempt, latency_ms=elapsed_ms)
+        )
+        session.commit()
         session.close()
 
 
 def handler(event, context):
     for record in event["Records"]:
         body = json.loads(record["body"])
-        process(uuid.UUID(body["repair_id"]))
+        attempt = int(record.get("attributes", {}).get("ApproximateReceiveCount", 1))
+        process(uuid.UUID(body["repair_id"]), attempt)
     return {"ok": True}
