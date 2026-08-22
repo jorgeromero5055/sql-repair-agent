@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/placeholder
+      QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/placeholder
+      AWS_DEFAULT_REGION: us-east-1
     defaults:
       run:
         working-directory: api
