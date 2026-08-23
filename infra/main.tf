@@ -3,6 +3,11 @@ variable "database_url" {
   sensitive = true
 }
 
+variable "agent_database_url" {
+  type      = string
+  sensitive = true
+}
+
 terraform {
   required_providers {
     aws = {
@@ -59,6 +64,7 @@ resource "aws_lambda_function" "api" {
     variables = {
       DATABASE_URL = var.database_url
        QUEUE_URL    = aws_sqs_queue.repairs.url
+        AGENT_DATABASE_URL = var.agent_database_url
     }
   }
 }
