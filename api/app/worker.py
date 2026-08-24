@@ -1,14 +1,11 @@
-
-
-
-
-
 import json
 import time
 import uuid
 
 from app.db.models import Repair, RepairStatus, Trace
 from app.db.session import SessionLocal
+
+from app.agent.loop import repair as run_agent
 
 MAX_ATTEMPTS = 3
 
@@ -26,11 +23,18 @@ def process(repair_id: uuid.UUID, attempt: int = 1) -> None:
             repair.status = RepairStatus.running
             session.commit()
 
-            repair.fixed_query = "-- canned result, the agent arrives in v2\nselect 1"
+            result = run_agent(repair.intent, repair.broken_query)
+
+            repair.fixed_query = result["fixed_query"]
+            repair.explanation = result["explanation"]
             repair.status = RepairStatus.needs_review
             session.commit()
 
-            print(f"repair {repair_id} -> needs_review (attempt {attempt})")
+            print(
+                f"repair {repair_id} -> needs_review "
+                f"(attempt {attempt}, {result['turns']} turns, "
+                f"converged={result['converged']})"
+            )
 
         except Exception:
             session.rollback()
