@@ -8,6 +8,11 @@ variable "agent_database_url" {
   sensitive = true
 }
 
+variable "gemini_api_key" {
+  type      = string
+  sensitive = true
+}
+
 terraform {
   required_providers {
     aws = {
@@ -65,6 +70,7 @@ resource "aws_lambda_function" "api" {
       DATABASE_URL = var.database_url
        QUEUE_URL    = aws_sqs_queue.repairs.url
         AGENT_DATABASE_URL = var.agent_database_url
+        GEMINI_API_KEY     = var.gemini_api_key
     }
   }
 }
@@ -326,6 +332,8 @@ resource "aws_lambda_function" "worker" {
     variables = {
       DATABASE_URL = var.database_url
       QUEUE_URL    = aws_sqs_queue.repairs.url
+      AGENT_DATABASE_URL = var.agent_database_url
+      GEMINI_API_KEY     = var.gemini_api_key
     }
   }
 }
