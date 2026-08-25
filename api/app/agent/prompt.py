@@ -1,4 +1,4 @@
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.5-flash-lite"
 
 SCHEMA = """
 sandbox.customers    (id int, name text, city text, signed_up date)
