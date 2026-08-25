@@ -1,23 +1,21 @@
-from fastapi import Depends, FastAPI,HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+import json
 import uuid
 
+import boto3
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
+from app import config
 from app.db.models import Repair
 from app.db.session import get_session
-from app.schemas import RepairCreate, RepairOut,RepairListItem
+from app.schemas import RepairCreate, RepairListItem, RepairOut
 from app.worker import handler as worker_handler
-
-import json
-import os
-
-import boto3
 
 app = FastAPI()
 
 sqs = boto3.client("sqs")
-QUEUE_URL = os.environ["QUEUE_URL"]
+QUEUE_URL = config.QUEUE_URL
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,3 +66,4 @@ def get_repair(repair_id: uuid.UUID, session: Session = Depends(get_session)):
     if repair is None:
         raise HTTPException(status_code=404, detail="repair not found")
     return repair
+    

@@ -1,19 +1,17 @@
 import json
-import os
 
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 from app.agent.prompt import MODEL, SYSTEM_INSTRUCTION, build_user_message
-from app.agent.tools import RUN_SQL_DECLARATION, run_sql
+from app.agent.tools import RUN_SQL_DECLARATION
+from app.config import GEMINI_API_KEY
+from app.sandbox import run_sql
 
-load_dotenv()
 
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 MAX_TURNS = 8
-
 
 def repair(intent: str, broken_query: str) -> dict:
     history = [
