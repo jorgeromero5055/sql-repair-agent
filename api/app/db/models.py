@@ -2,9 +2,8 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Text, func
+from sqlalchemy import JSON, Enum, ForeignKey, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
 
 class Base(DeclarativeBase):
     pass
@@ -38,6 +37,8 @@ class Repair(Base):
     )
 
 
+
+
 class Trace(Base):
     __tablename__ = "traces"
 
@@ -46,5 +47,10 @@ class Trace(Base):
         ForeignKey("repairs.id", ondelete="CASCADE"), nullable=False
     )
     attempts: Mapped[int] = mapped_column(default=0)
+    turns: Mapped[int] = mapped_column(default=0)
+    tokens: Mapped[int] = mapped_column(default=0)
+    passed: Mapped[bool] = mapped_column(default=False)
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    statements: Mapped[dict | None] = mapped_column(JSON)
     latency_ms: Mapped[int | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

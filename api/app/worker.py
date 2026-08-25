@@ -4,15 +4,16 @@ import uuid
 
 from app.db.models import Repair, RepairStatus, Trace
 from app.db.session import SessionLocal
-
-from app.agent.loop import repair as run_agent
+from app.repair import repair_with_retries
 
 MAX_ATTEMPTS = 3
 
 
 def process(repair_id: uuid.UUID, attempt: int = 1) -> None:
     started = time.monotonic()
+    trace_data: dict = {}
     session = SessionLocal()
+
     try:
         repair = session.get(Repair, repair_id)
         if repair is None:
@@ -23,17 +24,20 @@ def process(repair_id: uuid.UUID, attempt: int = 1) -> None:
             repair.status = RepairStatus.running
             session.commit()
 
-            result = run_agent(repair.intent, repair.broken_query)
+            trace_data = repair_with_retries(repair.intent, repair.broken_query)
 
-            repair.fixed_query = result["fixed_query"]
-            repair.explanation = result["explanation"]
-            repair.status = RepairStatus.needs_review
+            repair.fixed_query = trace_data["fixed_query"]
+            repair.explanation = trace_data["explanation"]
+            repair.status = (
+                RepairStatus.needs_review
+                if trace_data["passed"]
+                else RepairStatus.failed
+            )
             session.commit()
 
             print(
-                f"repair {repair_id} -> needs_review "
-                f"(attempt {attempt}, {result['turns']} turns, "
-                f"converged={result['converged']})"
+                f"repair {repair_id} -> {repair.status.value} "
+                f"({len(trace_data['attempts'])} attempts)"
             )
 
         except Exception:
@@ -46,8 +50,32 @@ def process(repair_id: uuid.UUID, attempt: int = 1) -> None:
 
     finally:
         elapsed_ms = int((time.monotonic() - started) * 1000)
+        runs = trace_data.get("attempts", [])
+
+        statements = [
+            {
+                "attempt": run["attempt"],
+                "attempt_passed": run["passed"],
+                "attempt_reason": run["reason"],
+                **statement,
+            }
+            for run in runs
+            for statement in run["statements"]
+        ]
+
         session.add(
-            Trace(repair_id=repair_id, attempts=attempt, latency_ms=elapsed_ms)
+            Trace(
+                repair_id=repair_id,
+                attempts=len(runs),
+                turns=sum(run["turns"] for run in runs),
+                tokens=sum(run["tokens"] for run in runs),
+                passed=bool(trace_data.get("passed")),
+                failure_reason=(
+                    None if trace_data.get("passed") else runs[-1]["reason"] if runs else None
+                ),
+                statements=statements or None,
+                latency_ms=elapsed_ms,
+            )
         )
         session.commit()
         session.close()

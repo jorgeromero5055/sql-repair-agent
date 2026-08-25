@@ -13,12 +13,16 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 MAX_TURNS = 8
 
-def repair(intent: str, broken_query: str) -> dict:
-    history = [
-        types.Content(
-            role="user",
-            parts=[types.Part(text=build_user_message(intent, broken_query))],
+def repair(intent: str, broken_query: str, feedback: str | None = None) -> dict:
+    message = build_user_message(intent, broken_query)
+    if feedback:
+        message += (
+            f"\n\nA previous attempt produced a query that was rejected:\n{feedback}\n"
+            "Do not repeat that mistake."
         )
+
+    history = [
+        types.Content(role="user", parts=[types.Part(text=message)])
     ]
 
     config = types.GenerateContentConfig(
@@ -45,6 +49,7 @@ def repair(intent: str, broken_query: str) -> dict:
     statements = []
     turns = 0
     answer = None
+    tokens = 0
 
     while turns < MAX_TURNS:
         turns += 1
@@ -55,6 +60,9 @@ def repair(intent: str, broken_query: str) -> dict:
 
         candidate = response.candidates[0]
         history.append(candidate.content)
+
+        if response.usage_metadata:
+            tokens += response.usage_metadata.total_token_count or 0
 
         calls = [p.function_call for p in candidate.content.parts if p.function_call]
 
@@ -86,5 +94,6 @@ def repair(intent: str, broken_query: str) -> dict:
         "explanation": explanation,
         "statements": statements,
         "turns": turns,
+        "tokens": tokens,
         "converged": answer is not None,
     }
