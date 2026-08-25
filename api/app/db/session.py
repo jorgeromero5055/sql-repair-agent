@@ -1,17 +1,14 @@
-import os
 from collections.abc import Generator
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-load_dotenv()
+from app.config import DATABASE_URL
 
-url = os.environ["DATABASE_URL"].replace("postgresql://", "postgresql+psycopg://", 1)
+url = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
 engine = create_engine(url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
-
 
 def get_session() -> Generator[Session]:
     session = SessionLocal()
@@ -19,3 +16,7 @@ def get_session() -> Generator[Session]:
         yield session
     finally:
         session.close()
+
+
+
+
