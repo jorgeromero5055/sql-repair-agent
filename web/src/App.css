@@ -182,3 +182,67 @@
     border-right-color: var(--border);
   }
 }
+
+/* --- review screen (v3 d5) --- */
+
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--code-bg);
+}
+.status.approved { background: #dcf5e3; color: #14532d; }
+.status.rejected,
+.status.failed   { background: #fde2e1; color: #7f1d1d; }
+
+.diff,
+.sql {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font: 0.85em/1.5 var(--mono);
+  overflow-x: auto;
+  white-space: pre;
+}
+.sql.failed { border-color: #e39c9c; }
+
+.diff .marker { display: inline-block; width: 1.2em; opacity: 0.5; }
+.diff .added   { background: #dcf5e3; }
+.diff .removed { background: #fde2e1; }
+
+.preview {
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.preview th,
+.preview td {
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  text-align: left;
+}
+.preview th { background: var(--code-bg); }
+
+.attempt {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.attempt summary { cursor: pointer; }
+
+.trace-summary { font-size: 0.85em; opacity: 0.7; }
+
+.decision {
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+  padding-top: 16px;
+}
+.decision .reject { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.decision .reject label { flex-basis: 100%; }
+.decision .error { color: #7f1d1d; }
+
+.rejected-reason { font-style: italic; }

@@ -31,6 +31,7 @@ class Repair(Base):
         default=RepairStatus.queued,
     )
     explanation: Mapped[str | None] = mapped_column(Text)
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -53,4 +54,16 @@ class Trace(Base):
     failure_reason: Mapped[str | None] = mapped_column(Text)
     statements: Mapped[dict | None] = mapped_column(JSON)
     latency_ms: Mapped[int | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    
+class SavedQuery(Base):
+    __tablename__ = "saved_queries"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    repair_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("repairs.id", ondelete="CASCADE"), nullable=False
+    )
+    sql: Mapped[str] = mapped_column(Text, nullable=False)
+    # the rows it returned when you approved it — same JSON shape as traces.statements
+    result_preview: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

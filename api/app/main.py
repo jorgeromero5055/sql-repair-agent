@@ -7,9 +7,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app import config
-from app.db.models import Repair
+from app.approval import NotReviewable, approve, reject
+from app.db.models import Repair, Trace
 from app.db.session import get_session
-from app.schemas import RepairCreate, RepairListItem, RepairOut
+from app.review import group_attempts, preview_rows
+from app.schemas import (
+    RepairCreate,
+    RepairDetail,
+    RepairListItem,
+    RepairOut,
+    RepairReject,
+    SavedQueryOut,
+    TraceOut,
+)
 from app.worker import handler as worker_handler
 
 app = FastAPI()
@@ -33,6 +43,7 @@ app.add_middleware(
 def health():
     return {"status": "ok", "version": 2}
 
+
 @app.post("/repairs", response_model=RepairOut, status_code=201)
 def create_repair(body: RepairCreate, session: Session = Depends(get_session)):
     repair = Repair(intent=body.intent, broken_query=body.broken_query)
@@ -47,9 +58,11 @@ def create_repair(body: RepairCreate, session: Session = Depends(get_session)):
 
     return repair
 
+
 @app.post("/events")
 def events(event: dict):
     return worker_handler(event, None)
+
 
 @app.get("/repairs", response_model=list[RepairListItem])
 def list_repairs(session: Session = Depends(get_session)):
@@ -60,10 +73,54 @@ def list_repairs(session: Session = Depends(get_session)):
         .all()
     )
 
-@app.get("/repairs/{repair_id}", response_model=RepairOut)
+
+@app.get("/repairs/{repair_id}", response_model=RepairDetail)
 def get_repair(repair_id: uuid.UUID, session: Session = Depends(get_session)):
     repair = session.get(Repair, repair_id)
     if repair is None:
         raise HTTPException(status_code=404, detail="repair not found")
-    return repair
-    
+
+    # A retried queue message can leave a second trace behind. The newest is the real one.
+    trace = (
+        session.query(Trace)
+        .filter(Trace.repair_id == repair.id)
+        .order_by(Trace.created_at.desc())
+        .first()
+    )
+
+    return RepairDetail(
+        **RepairOut.model_validate(repair).model_dump(),
+        trace=TraceOut.model_validate(trace) if trace else None,
+        attempts=group_attempts(trace),
+        preview=preview_rows(repair),
+    )
+
+
+@app.post("/repairs/{repair_id}/approve", response_model=SavedQueryOut, status_code=201)
+def approve_repair(repair_id: uuid.UUID, session: Session = Depends(get_session)):
+    repair = session.get(Repair, repair_id)
+    if repair is None:
+        raise HTTPException(status_code=404, detail="repair not found")
+
+    try:
+        return approve(repair, session)
+    except NotReviewable as e:
+        # 409: it exists, but it's in the wrong state for this.
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.post("/repairs/{repair_id}/reject", response_model=RepairOut)
+def reject_repair(
+    repair_id: uuid.UUID,
+    body: RepairReject,
+    session: Session = Depends(get_session),
+):
+    repair = session.get(Repair, repair_id)
+    if repair is None:
+        raise HTTPException(status_code=404, detail="repair not found")
+
+    try:
+        return reject(repair, session, body.reason)
+    except NotReviewable as e:
+        # 409: it exists, but it's in the wrong state for this.
+        raise HTTPException(status_code=409, detail=str(e))
