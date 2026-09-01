@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { createRepair, listRepairs, type RepairListItem } from "./api";
+import Repair from "./Repair";
 
 function Queue() {
   const [repairs, setRepairs] = useState<RepairListItem[] | null>(null);
@@ -61,7 +62,9 @@ function Queue() {
       <ul>
         {repairs.map((r) => (
           <li key={r.id}>
-            <strong>{r.status}</strong> — {r.intent}
+            <Link to={`/repairs/${r.id}`}>
+              <strong>{r.status.replace("_", " ")}</strong> — {r.intent}
+            </Link>
           </li>
         ))}
       </ul>
@@ -119,10 +122,6 @@ function Submit() {
       </form>
     </>
   );
-}
-
-function Repair() {
-  return <h1>Repair</h1>;
 }
 
 function Runs() {
