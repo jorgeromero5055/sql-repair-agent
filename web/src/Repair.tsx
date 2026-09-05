@@ -131,12 +131,16 @@ export default function Repair() {
 
   return (
     <>
-      <p>
-        <Link to="/queue">← Queue</Link>
-      </p>
+      <Link to="/queue" className="back">
+        ← Queue
+      </Link>
 
       <h1>{repair.intent}</h1>
-      <p className={`status ${repair.status}`}>{repair.status.replace("_", " ")}</p>
+      <p>
+        <span className={`status ${repair.status}`}>
+          {repair.status.replace("_", " ")}
+        </span>
+      </p>
 
       {repair.status === "rejected" && repair.rejection_reason && (
         <p className="rejected-reason">You rejected this: {repair.rejection_reason}</p>
@@ -197,13 +201,15 @@ export default function Repair() {
           </button>
 
           <div className="reject">
-            <label htmlFor="reason">Or reject it, and say why</label>
-            <input
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="What's wrong with it?"
-            />
+            <div>
+              <label htmlFor="reason">Or reject it, and say why</label>
+              <input
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="What's wrong with it?"
+              />
+            </div>
             <button
               disabled={busy || reason.trim() === ""}
               onClick={() => decide(() => rejectRepair(repair.id, reason))}

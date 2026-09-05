@@ -11,6 +11,7 @@ def preview_rows(repair: Repair) -> list[dict] | None:
         return None
 
     result = run_sql(repair.fixed_query)
+
     if not result["ok"]:
         return None
 

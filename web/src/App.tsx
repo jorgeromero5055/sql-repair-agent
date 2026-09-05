@@ -7,7 +7,9 @@ import {
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { createRepair, listRepairs, type RepairListItem } from "./api";
+import "./App.css";
 import Repair from "./Repair";
+import Runs from "./Runs";
 
 function Queue() {
   const [repairs, setRepairs] = useState<RepairListItem[] | null>(null);
@@ -46,12 +48,14 @@ function Queue() {
     return (
       <>
         <h1>Queue</h1>
-        <p>
-          Nothing here yet. Paste a broken SQL query and say what it was
-          supposed to do — an agent will try to fix it, and you approve the
-          result before anything is saved.
-        </p>
-        <Link to="/submit">Submit a repair</Link>
+        <p className="subtitle">Nothing here yet.</p>
+        <div className="empty">
+          <p>
+            Paste a broken SQL query and say what it was supposed to do. An agent
+            fixes it, and you approve the result before anything is saved.
+          </p>
+          <Link to="/submit">Submit a repair</Link>
+        </div>
       </>
     );
   }
@@ -59,11 +63,18 @@ function Queue() {
   return (
     <>
       <h1>Queue</h1>
-      <ul>
+      <p className="subtitle">{repairs.length} repairs, newest first.</p>
+      <ul className="queue">
         {repairs.map((r) => (
           <li key={r.id}>
             <Link to={`/repairs/${r.id}`}>
-              <strong>{r.status.replace("_", " ")}</strong> — {r.intent}
+              <span className={`status ${r.status}`}>
+                {r.status.replace("_", " ")}
+              </span>
+              <span className="intent">{r.intent}</span>
+              <span className="when">
+                {new Date(r.created_at).toLocaleDateString()}
+              </span>
             </Link>
           </li>
         ))}
@@ -95,7 +106,11 @@ function Submit() {
   return (
     <>
       <h1>Submit a repair</h1>
-      <form onSubmit={onSubmit}>
+      <p className="subtitle">
+        The agent never sees an error message — it finds the problem by running
+        the query itself.
+      </p>
+      <form className="form" onSubmit={onSubmit}>
         <div>
           <label htmlFor="intent">What was it supposed to do?</label>
           <input
@@ -115,33 +130,41 @@ function Submit() {
             required
           />
         </div>
-        {error && <p>Couldn't submit: {error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Submitting…" : "Repair"}
-        </button>
+        {error && <p className="error">Couldn't submit: {error}</p>}
+        <div>
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Submitting…" : "Repair"}
+          </button>
+        </div>
       </form>
     </>
   );
 }
 
-function Runs() {
-  return <h1>Runs</h1>;
-}
-
 export default function App() {
   return (
     <BrowserRouter>
-      <nav>
-        <Link to="/queue">Queue</Link> | <Link to="/runs">Runs</Link> |
-        <Link to="/submit">Submit</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<Queue />} />
-        <Route path="/queue" element={<Queue />} />
-        <Route path="/repairs/:id" element={<Repair />} />
-        <Route path="/runs" element={<Runs />} />
-        <Route path="/submit" element={<Submit />} />
-      </Routes>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <Link to="/queue" className="brand">
+            SQL Repair Agent
+          </Link>
+          <nav>
+            <Link to="/queue">Queue</Link>
+            <Link to="/runs">Runs</Link>
+            <Link to="/submit">Submit</Link>
+          </nav>
+        </div>
+      </header>
+      <main>
+        <Routes>
+          <Route path="/" element={<Queue />} />
+          <Route path="/queue" element={<Queue />} />
+          <Route path="/repairs/:id" element={<Repair />} />
+          <Route path="/runs" element={<Runs />} />
+          <Route path="/submit" element={<Submit />} />
+        </Routes>
+      </main>
     </BrowserRouter>
   );
 }

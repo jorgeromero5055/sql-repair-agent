@@ -37,9 +37,6 @@ class Repair(Base):
         server_default=func.now(), onupdate=func.now()
     )
 
-
-
-
 class Trace(Base):
     __tablename__ = "traces"
 
@@ -67,3 +64,37 @@ class SavedQuery(Base):
     # the rows it returned when you approved it — same JSON shape as traces.statements
     result_preview: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class EvalRun(Base):
+    __tablename__ = "eval_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    requests_used: Mapped[int] = mapped_column(default=0)
+    started_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    finished_at: Mapped[datetime | None]
+
+
+class EvalResult(Base):
+    __tablename__ = "eval_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("eval_runs.id", ondelete="CASCADE"), nullable=False
+    )
+    case_id: Mapped[str] = mapped_column(Text, nullable=False)
+    break_type: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Correct means the oracle says the rows match, not that the query ran.
+    passed: Mapped[bool] = mapped_column(default=False)
+    passed_first_try: Mapped[bool] = mapped_column(default=False)
+
+    attempts: Mapped[int] = mapped_column(default=0)
+    tokens: Mapped[int] = mapped_column(default=0)
+    latency_ms: Mapped[int | None]
+    fixed_query: Mapped[str | None] = mapped_column(Text)
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+

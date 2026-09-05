@@ -1,4 +1,5 @@
-from app.verifier import check, compare
+from app.evaluation.oracle import compare
+from app.verifier import check
 
 GOOD = """
 select customers.name, sum(order_items.quantity) as total

@@ -73,3 +73,39 @@ class RepairDetail(RepairOut):
     attempts: list[AttemptOut]
     preview: list[dict] | None
 
+
+class RunSummary(BaseModel):
+    id: uuid.UUID
+    note: str | None
+    model: str
+    started_at: datetime
+    finished_at: datetime | None
+    cases: int
+    pass_at_1: float
+    pass_at_3: float
+    avg_attempts: float
+    avg_latency_ms: int | None
+    tokens: int
+    cost_usd: float
+
+
+class BreakTypeStat(BaseModel):
+    break_type: str
+    cases: int
+    pass_at_1: float
+    pass_at_3: float
+
+
+class RunFailure(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    case_id: str
+    break_type: str
+    fixed_query: str | None
+    failure_reason: str | None
+
+
+class RunDetail(RunSummary):
+    by_break_type: list[BreakTypeStat]
+    failures: list[RunFailure]
+
