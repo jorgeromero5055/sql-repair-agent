@@ -91,3 +91,45 @@ export function approveRepair(id: string) {
 export function rejectRepair(id: string, reason: string) {
   return send(`/repairs/${id}/reject`, asJson({ reason }));
 }
+
+export type BreakTypeStat = {
+  break_type: string;
+  cases: number;
+  pass_at_1: number;
+  pass_at_3: number;
+};
+
+export type RunFailure = {
+  case_id: string;
+  break_type: string;
+  fixed_query: string | null;
+  failure_reason: string | null;
+};
+
+export type RunSummary = {
+  id: string;
+  note: string | null;
+  model: string;
+  started_at: string;
+  finished_at: string | null;
+  cases: number;
+  pass_at_1: number;
+  pass_at_3: number;
+  avg_attempts: number;
+  avg_latency_ms: number | null;
+  tokens: number;
+  cost_usd: number;
+};
+
+export type RunDetail = RunSummary & {
+  by_break_type: BreakTypeStat[];
+  failures: RunFailure[];
+};
+
+export function listRuns(): Promise<RunSummary[]> {
+  return send("/runs");
+}
+
+export function getRun(id: string): Promise<RunDetail> {
+  return send(`/runs/${id}`);
+}

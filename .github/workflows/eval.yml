@@ -1,0 +1,57 @@
+name: eval slice
+
+# Accuracy can only move when the agent, the prompt, the verifier or the retry loop move.
+# Running it on every pull request would spend quota proving nothing changed.
+on:
+  pull_request:
+    paths:
+      - "api/app/agent/**"
+      - "api/app/verifier.py"
+      - "api/app/repair.py"
+      - "api/app/evaluation/**"
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+      QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/placeholder
+      AWS_DEFAULT_REGION: us-east-1
+      AGENT_DB_PASSWORD: ci-test-password-123
+      AGENT_DATABASE_URL: postgresql://agent_ro:ci-test-password-123@localhost:5432/test
+      # A real key, unlike test.yml's placeholder — this one calls the model.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    defaults:
+      run:
+        working-directory: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - run: uv sync --frozen
+
+      - run: uv run alembic upgrade head
+
+      # Five cases, one per kind of bug. Exits non-zero below 80%, which fails the check.
+      - run: |
+          uv run python -m app.evaluation.runner \
+            --slice --min-pass 80 --note "PR ${{ github.event.number }}"

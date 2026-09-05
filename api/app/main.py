@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.approval import NotReviewable, approve, reject
-from app.db.models import Repair, Trace
+from app.db.models import EvalResult, EvalRun, Repair, Trace
 from app.db.session import get_session
+from app.evaluation.stats import by_break_type, summarise
 from app.review import group_attempts, preview_rows
 from app.schemas import (
     RepairCreate,
@@ -17,6 +18,8 @@ from app.schemas import (
     RepairListItem,
     RepairOut,
     RepairReject,
+    RunDetail,
+    RunSummary,
     SavedQueryOut,
     TraceOut,
 )
@@ -124,3 +127,33 @@ def reject_repair(
     except NotReviewable as e:
         # 409: it exists, but it's in the wrong state for this.
         raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.get("/runs", response_model=list[RunSummary])
+def list_runs(session: Session = Depends(get_session)):
+    runs = session.query(EvalRun).order_by(EvalRun.started_at.desc()).limit(20).all()
+
+    # The numbers are worked out here rather than stored - the results are the record.
+    return [
+        summarise(
+            run,
+            session.query(EvalResult).filter(EvalResult.run_id == run.id).all(),
+        )
+        for run in runs
+    ]
+
+
+@app.get("/runs/{run_id}", response_model=RunDetail)
+def get_run(run_id: uuid.UUID, session: Session = Depends(get_session)):
+    run = session.get(EvalRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    results = session.query(EvalResult).filter(EvalResult.run_id == run.id).all()
+
+    return RunDetail(
+        **summarise(run, results),
+        by_break_type=by_break_type(results),
+        # A pass rate says something is wrong; only these say what.
+        failures=[r for r in results if not r.passed],
+    )

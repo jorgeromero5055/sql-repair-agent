@@ -1,4 +1,5 @@
 from app.agent.loop import repair as run_agent
+from app.sandbox import DatabaseUnreachable
 from app.verifier import check
 
 MAX_ATTEMPTS = 3
@@ -10,12 +11,32 @@ def repair_with_retries(intent: str, broken_query: str) -> dict:
     attempts = []
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        result = run_agent(intent, broken_query, feedback=feedback)
+        # If the database is unreachable there is nothing to retry — stop on the spot.
+        try:
+            result = run_agent(intent, broken_query, feedback=feedback)
 
-        if result["fixed_query"]:
-            verdict = check(result["fixed_query"])
-        else:
-            verdict = {"passed": False, "reason": "The agent produced no query."}
+            if result["fixed_query"]:
+                verdict = check(result["fixed_query"])
+            else:
+                verdict = {"passed": False, "reason": "The agent produced no query."}
+
+        except DatabaseUnreachable as e:
+            return {
+                "passed": False,
+                "fixed_query": None,
+                "explanation": None,
+                "attempts": attempts
+                + [
+                    {
+                        "attempt": attempt,
+                        "turns": 0,
+                        "tokens": 0,
+                        "statements": [],
+                        "passed": False,
+                        "reason": f"The database could not be reached: {e}",
+                    }
+                ],
+            }
 
         attempts.append(
             {
