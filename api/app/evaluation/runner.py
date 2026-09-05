@@ -70,7 +70,6 @@ def _slice(cases: list[dict]) -> list[dict]:
         picked.setdefault(case["break_type"], case)
     return list(picked.values())
 
-
 def _score(result: dict, case: dict) -> tuple[bool, str | None]:
     """Did the agent's query return the same rows as the one this case was made from?
 
@@ -189,7 +188,6 @@ def run(limit: int | None = None, max_requests: int = 450,
             )
 
     session.close()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the agent over the eval cases.")
