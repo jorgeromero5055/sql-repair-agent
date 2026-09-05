@@ -55,6 +55,8 @@ something, it's here:
 | The Runs page | Shows pass rate, attempts, latency and cost. |
 | A slice in CI | Fails a pull request visibly when accuracy drops. |
 
+**v4.5 — close the open gaps. Done.** The worker runs locally, and main requires tests to pass before a merge.
+
 **v5 — write it up. ← here.** README, the decisions written up properly, a data-flow and failure trace.
 
 ## 4. Open gaps
@@ -64,13 +66,13 @@ can tell "I broke something" from "this was always going to be like this."
 
 | What you'll see | Why, and when it changes |
 |---|---|
-| A job submitted **locally** sits at `queued` and never moves. | Expected. No worker runs locally — the message goes to the real AWS queue and the deployed worker can't see your local database. Trigger it yourself with `POST /events` and the repair id. Not assigned to a deliverable. |
-| A job sits at `queued` forever **in production**. | A gap. The worker crashed three times and the message parked in the dead-letter queue, but nothing sets the row to `failed`. Not assigned — small, and `failed` already exists for it. |
+| A job submitted **locally** finishes but never shows `queued`. | Expected. With `RUN_WORKER_LOCALLY=true` the API runs the worker itself after replying, so it goes straight to `running`. It is not a queue — it dies with the server and never retries. |
+| A job sits at `running` forever **in production**. | Rare. The worker already marks a row `failed` on its third failed attempt — but only when Python raises. A Lambda timeout or out-of-memory kills it before that runs, so the message reaches the dead-letter queue while the row still says `running`. The queue knows it failed; the database doesn't. Documented as a limitation rather than fixed; the fix is a second Lambda on the dead-letter queue. |
 | The local queue fills with repairs called "count the customers". | A gap. The tests insert them and never clean up. **Assigned: v3.5 d1.** |
 | Repairs stop working partway through a session. | Expected. The Gemini free tier is about 20 requests a day and one repair costs 5 to 24. Unsolved, and it blocks v4, which needs over a thousand calls. |
 | The agent burns all three attempts on a query that was fine. | A gap. The verifier can't tell "your query is wrong" from "the database is unreachable", so it feeds an infrastructure error back to the model, which can't fix it. Found in production on v3's first live run. **Assigned: v3.5 d2.** |
 | A prompt change makes the agent worse. | Caught, but only if `GEMINI_API_KEY` is added to the repository secrets — the eval slice can't run without it. |
-| A broken change reaches production. | Expected. Tests run on the pull request, deploy runs on push to main — nothing gates one on the other except you merging a green PR. It's a branch protection setting, not code. |
+| A broken change reaches production. | Closed in v4.5. A branch ruleset requires `pytest` before a merge to main, and deploy only runs on merge. |
 
 ---
 

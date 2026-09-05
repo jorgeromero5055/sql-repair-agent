@@ -2,7 +2,7 @@ import json
 import uuid
 
 import boto3
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from app.schemas import (
     TraceOut,
 )
 from app.worker import handler as worker_handler
+from app.worker import process as worker_process
 
 app = FastAPI()
 
@@ -48,16 +49,25 @@ def health():
 
 
 @app.post("/repairs", response_model=RepairOut, status_code=201)
-def create_repair(body: RepairCreate, session: Session = Depends(get_session)):
+def create_repair(
+    body: RepairCreate,
+    background: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
     repair = Repair(intent=body.intent, broken_query=body.broken_query)
     session.add(repair)
     session.commit()
     session.refresh(repair)
 
-    sqs.send_message(
-        QueueUrl=QUEUE_URL,
-        MessageBody=json.dumps({"repair_id": str(repair.id)}),
-    )
+    if config.RUN_WORKER_LOCALLY:
+        # Runs after this response is sent, in this same process. Not a queue: it dies with
+        # the server and never retries. Local only — see config.py.
+        background.add_task(worker_process, repair.id)
+    else:
+        sqs.send_message(
+            QueueUrl=QUEUE_URL,
+            MessageBody=json.dumps({"repair_id": str(repair.id)}),
+        )
 
     return repair
 

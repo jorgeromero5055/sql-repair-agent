@@ -28,4 +28,9 @@ _check()
 DATABASE_URL = os.environ["DATABASE_URL"]
 AGENT_DATABASE_URL = os.environ["AGENT_DATABASE_URL"]
 QUEUE_URL = os.environ["QUEUE_URL"]
+
+# Local only. When this is on, POST /repairs runs the worker in the background instead of
+# sending to SQS — the deployed worker reads Neon and would never find a local repair.
+# It is not a queue: nothing survives a restart and nothing is retried.
+RUN_WORKER_LOCALLY = os.environ.get("RUN_WORKER_LOCALLY", "").lower() == "true"
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
