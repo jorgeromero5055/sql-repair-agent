@@ -9,6 +9,7 @@ NOW.md
 # Secrets
 .env
 .env.*
+!.env.example
 *.tfvars
 !*.tfvars.example
 
