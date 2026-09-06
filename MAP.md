@@ -57,7 +57,7 @@ something, it's here:
 
 **v4.5 — close the open gaps. Done.** The worker runs locally, and main requires tests to pass before a merge.
 
-**v5 — write it up. ← here.** README, the decisions written up properly, a data-flow and failure trace.
+**v5 — write it up. ← here.** Three files: `docs/decisions.md`, `docs/trace.md`, `README.md`.
 
 ## 4. Open gaps
 
@@ -113,6 +113,8 @@ The agent cannot write. That is enforced by the login, not by the prompt.
 - `web/src/App.tsx` — the queue, the submit form, the routes.
 - `web/src/Repair.tsx` — the review screen: diff, rows, attempts, approve and reject. *(v3)*
 - `web/src/Runs.tsx` — the eval results: pass rates per run, broken down by kind of bug. *(v4)*
+- `docs/decisions.md` — why it's built this way, and the three things that went wrong. *(v5)*
+- `docs/trace.md` — how a repair moves, how it breaks, what's not handled. *(v5)*
 
 ## Where it runs
 
